@@ -8,12 +8,24 @@ import (
 )
 
 func (c *Client) ListLocationAreas(pageURL *string) (LocationAreaResp, error) {
-	endpoint := baseURL + "location-area"
+	url := baseURL + "/location-area"
 	if pageURL != nil {
-		endpoint = *pageURL
+		url = *pageURL
 	}
 
-	req, err := http.NewRequest("GET", endpoint, nil)
+	dat, ok := c.cache.Get(url)
+	if ok {
+		locationAreasResp := LocationAreaResp{}
+		// Unmarshal func takes data and a pointer to a struct and fill it in with the data
+		err := json.Unmarshal(dat, &locationAreasResp)
+		if err != nil {
+			return LocationAreaResp{}, err
+		}
+
+		return locationAreasResp, nil
+	}
+
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return LocationAreaResp{}, err
 	}
@@ -28,7 +40,7 @@ func (c *Client) ListLocationAreas(pageURL *string) (LocationAreaResp, error) {
 		return LocationAreaResp{}, fmt.Errorf("bad status code: %v", resp.StatusCode)
 	}
 
-	dat, err := io.ReadAll(resp.Body)
+	dat, err = io.ReadAll(resp.Body)
 	if err != nil {
 		return LocationAreaResp{}, err
 	}
@@ -39,6 +51,8 @@ func (c *Client) ListLocationAreas(pageURL *string) (LocationAreaResp, error) {
 	if err != nil {
 		return LocationAreaResp{}, err
 	}
+
+	c.cache.Add(url, dat)
 
 	return locationAreasResp, nil
 }
